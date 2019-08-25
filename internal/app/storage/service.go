@@ -144,31 +144,39 @@ func (s *Service) DeleteExpired() {
 
 }
 func (s *Service) Dump() error {
+	s.Lock()
 	cacheJSON, err := json.Marshal(s.cache)
 	if err != nil {
+		s.Unlock()
 		return err
 	}
 	err = s.file.Truncate(0)
 	if err != nil {
+		s.Unlock()
 		return err
 	}
 	_, err = s.file.Seek(0, 0)
 	if err != nil {
+		s.Unlock()
 		return err
 	}
 	_, err = s.file.Write(cacheJSON)
 	if err != nil {
+		s.Unlock()
 		return err
 	}
+	s.Unlock()
 	return nil
 }
 
 func (s *Service) Load() error {
 	buf := make([]byte, 1024)
+	s.Lock()
 	var cacheJSON []byte
 	for {
 		n, err := s.file.Read(buf)
 		if err != nil && err != io.EOF {
+			s.Unlock()
 			return err
 		}
 		if n == 0 {
@@ -180,10 +188,11 @@ func (s *Service) Load() error {
 	if string(cacheJSON) != "" {
 		err := json.Unmarshal(cacheJSON, &s.cache)
 		if err != nil {
-			fmt.Println("bang")
+			s.Unlock()
 			return err
 		}
 	}
+	s.Unlock()
 	return nil
 }
 
