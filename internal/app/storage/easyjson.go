@@ -36,6 +36,26 @@ func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(in *jlexer.Lexer, o
 			continue
 		}
 		switch key {
+		case "Cache":
+			if in.IsNull() {
+				in.Skip()
+			} else {
+				in.Delim('{')
+				if !in.IsDelim('}') {
+					out.Cache = make(map[string]Item)
+				} else {
+					out.Cache = nil
+				}
+				for !in.IsDelim('}') {
+					key := string(in.String())
+					in.WantColon()
+					var v1 Item
+					(v1).UnmarshalEasyJSON(in)
+					(out.Cache)[key] = v1
+					in.WantComma()
+				}
+				in.Delim('}')
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -50,6 +70,27 @@ func easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage(out *jwriter.Writer
 	out.RawByte('{')
 	first := true
 	_ = first
+	{
+		const prefix string = ",\"Cache\":"
+		out.RawString(prefix[1:])
+		if in.Cache == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
+			out.RawString(`null`)
+		} else {
+			out.RawByte('{')
+			v2First := true
+			for v2Name, v2Value := range in.Cache {
+				if v2First {
+					v2First = false
+				} else {
+					out.RawByte(',')
+				}
+				out.String(string(v2Name))
+				out.RawByte(':')
+				(v2Value).MarshalEasyJSON(out)
+			}
+			out.RawByte('}')
+		}
+	}
 	out.RawByte('}')
 }
 

@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"inmemoryStorage/config"
@@ -14,7 +13,7 @@ import (
 type Service struct {
 	cfg *config.Config
 	sync.RWMutex
-	cache       map[string]Item
+	Cache       map[string]Item
 	expirations map[int64][]string
 	file        *os.File
 }
@@ -27,7 +26,7 @@ type Item struct {
 func New(cfg *config.Config, cache map[string]Item, expirations map[int64][]string, file *os.File) *Service {
 	return &Service{
 		cfg:         cfg,
-		cache:       cache,
+		Cache:       cache,
 		expirations: expirations,
 		file:        file,
 	}
@@ -46,14 +45,14 @@ func (s *Service) Set(key, value []byte, duration uint) {
 	}
 
 	s.Lock()
-	if item, found := s.cache[string(key)]; found {
+	if item, found := s.Cache[string(key)]; found {
 		for i, curItem := range s.expirations[item.Expiration] {
 			if curItem == string(key) {
 				s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
 			}
 		}
 	}
-	s.cache[string(key)] = Item{
+	s.Cache[string(key)] = Item{
 		Value:      value,
 		Expiration: expiration,
 	}
@@ -64,7 +63,7 @@ func (s *Service) Set(key, value []byte, duration uint) {
 func (s *Service) Get(key []byte) ([]byte, bool) {
 	s.RLock()
 
-	item, found := s.cache[string(key)]
+	item, found := s.Cache[string(key)]
 
 	if !found {
 		s.RUnlock()
@@ -85,7 +84,7 @@ func (s *Service) Get(key []byte) ([]byte, bool) {
 func (s *Service) Delete(key []byte) error {
 	s.Lock()
 
-	if item, found := s.cache[string(key)]; found {
+	if item, found := s.Cache[string(key)]; found {
 		for i, curItem := range s.expirations[item.Expiration] {
 			if curItem == string(key) {
 				s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
@@ -93,12 +92,12 @@ func (s *Service) Delete(key []byte) error {
 		}
 	}
 
-	if _, found := s.cache[string(key)]; !found {
+	if _, found := s.Cache[string(key)]; !found {
 		s.Unlock()
 		return errors.New("key not found")
 	}
 
-	delete(s.cache, string(key))
+	delete(s.Cache, string(key))
 	s.Unlock()
 	return nil
 }
@@ -106,7 +105,7 @@ func (s *Service) Delete(key []byte) error {
 func (s *Service) DeleteBatch(keys []string) error {
 
 	for _, key := range keys {
-		if item, found := s.cache[key]; found {
+		if item, found := s.Cache[key]; found {
 			for i, curItem := range s.expirations[item.Expiration] {
 				if curItem == key {
 					s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
@@ -114,11 +113,11 @@ func (s *Service) DeleteBatch(keys []string) error {
 			}
 		}
 
-		if _, found := s.cache[key]; !found {
+		if _, found := s.Cache[key]; !found {
 			return errors.New("key not found")
 		}
 
-		delete(s.cache, key)
+		delete(s.Cache, key)
 	}
 	return nil
 }
@@ -126,7 +125,7 @@ func (s *Service) DeleteBatch(keys []string) error {
 func (s *Service) DeleteExpired() {
 	now := time.Now().UnixNano()
 	s.Lock()
-	for k, v := range s.cache {
+	for k, v := range s.Cache {
 		fmt.Println(k, v.Value)
 	}
 	for expiration, keys := range s.expirations {
@@ -136,7 +135,7 @@ func (s *Service) DeleteExpired() {
 			}
 		}
 	}
-	for k, v := range s.cache {
+	for k, v := range s.Cache {
 		fmt.Println(k, v.Value)
 	}
 	s.Unlock()
@@ -144,7 +143,7 @@ func (s *Service) DeleteExpired() {
 }
 func (s *Service) Dump() error {
 	s.Lock()
-	cacheJSON, err := json.Marshal(s.cache)
+	cacheJSON, err := s.MarshalJSON()
 	if err != nil {
 		s.Unlock()
 		return err
@@ -185,7 +184,7 @@ func (s *Service) Load() error {
 	}
 
 	if string(cacheJSON) != "" {
-		err := json.Unmarshal(cacheJSON, &s.cache)
+		err := s.UnmarshalJSON(cacheJSON)
 		if err != nil {
 			s.Unlock()
 			return err
@@ -194,4 +193,3 @@ func (s *Service) Load() error {
 	s.Unlock()
 	return nil
 }
-
