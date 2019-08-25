@@ -8,14 +8,16 @@ import (
 )
 
 var (
-	port     = flag.String("port", ":2094", "App port")
-	ttlCheck = flag.Int("ttl_check", 5, "TTL check interval")
+	port         = flag.String("port", ":2094", "App port")
+	ttlCheck     = flag.Int("ttl_check", 5, "TTL check interval")
+	dumpFile     = flag.String("dump", "dump.db", "Dump file")
+	dumpInterval = flag.Int("dump_interval", 5, "Dump interval")
 )
 
 func main() {
 	flag.Parse()
 
-	cfg := config.New(*ttlCheck, *port)
+	cfg := config.New(*ttlCheck, *port, *dumpFile, *dumpInterval)
 
 	application, err := app.New(cfg)
 	if err != nil {

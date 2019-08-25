@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"inmemoryStorage/config"
 	"inmemoryStorage/internal/app/deleter"
+	"inmemoryStorage/internal/app/dumper"
 	"inmemoryStorage/internal/app/storage"
 	"log"
 	"net"
@@ -22,6 +23,7 @@ type Application struct {
 	storage  *storage.Service
 	logger   *log.Logger
 	deleter  *deleter.Service
+	dumper   *dumper.Service
 }
 
 func New(cfg *config.Config) (*Application, error) {
@@ -33,9 +35,15 @@ func New(cfg *config.Config) (*Application, error) {
 
 	items := make(map[uint64]storage.Item)
 	expirations := make(map[int64][]uint64)
-	curStorage := storage.New(cfg, items, expirations)
+	file, err := os.OpenFile(cfg.DumpFile, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+	curStorage := storage.New(cfg, items, expirations, file)
 	stop := make(chan bool)
 	deleter := deleter.New(time.Duration(cfg.TTLCheckInterval)*time.Second, stop, curStorage)
+	stopDump := make(chan bool)
+	dumper := dumper.New(time.Duration(cfg.DumpInterval)*time.Second, stopDump, curStorage)
 
 	return &Application{
 		cfg:      cfg,
@@ -43,16 +51,23 @@ func New(cfg *config.Config) (*Application, error) {
 		logger:   log.New(os.Stdout, "Storage ", 0),
 		storage:  curStorage,
 		deleter:  deleter,
+		dumper:   dumper,
 	}, nil
 }
 
 func (a *Application) Run() error {
+	err := a.storage.Load()
+	if err != nil {
+		a.logger.Println(err)
+		return err
+	}
 	conn, err := a.listener.Accept()
 	if err != nil {
 		a.logger.Println(err)
 		return err
 	}
 	go a.deleter.Run()
+	go a.dumper.Run()
 	go func() {
 		sc := make(chan os.Signal, 1)
 
@@ -114,6 +129,8 @@ func (a *Application) Run() error {
 func (a *Application) Quit() {
 	fmt.Println("Application quit")
 	a.deleter.Stop()
+	a.dumper.Stop()
 	a.listener.Close()
+	a.storage.Stop()
 	os.Exit(0)
 }

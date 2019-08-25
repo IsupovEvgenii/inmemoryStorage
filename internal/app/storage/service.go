@@ -2,9 +2,12 @@ package storage
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"inmemoryStorage/config"
+	"io"
+	"os"
 	"sync"
 	"time"
 )
@@ -14,6 +17,7 @@ type Service struct {
 	sync.RWMutex
 	cache       map[uint64]Item
 	expirations map[int64][]uint64
+	file        *os.File
 }
 
 type Item struct {
@@ -21,12 +25,16 @@ type Item struct {
 	Value      []byte
 }
 
-func New(cfg *config.Config, cache map[uint64]Item, expirations map[int64][]uint64) *Service {
+func New(cfg *config.Config, cache map[uint64]Item, expirations map[int64][]uint64, file *os.File) *Service {
 	return &Service{
 		cfg:         cfg,
 		cache:       cache,
 		expirations: expirations,
+		file:        file,
 	}
+}
+func (s *Service) Stop() {
+	s.file.Close()
 }
 
 func (s *Service) Set(key, value []byte, duration uint) {
@@ -134,6 +142,49 @@ func (s *Service) DeleteExpired() {
 	}
 	s.Unlock()
 
+}
+func (s *Service) Dump() error {
+	cacheJSON, err := json.Marshal(s.cache)
+	if err != nil {
+		return err
+	}
+	err = s.file.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = s.file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	_, err = s.file.Write(cacheJSON)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) Load() error {
+	buf := make([]byte, 1024)
+	var cacheJSON []byte
+	for {
+		n, err := s.file.Read(buf)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		if n == 0 {
+			break
+		}
+		cacheJSON = append(cacheJSON, buf[:n]...)
+	}
+
+	if string(cacheJSON) != "" {
+		err := json.Unmarshal(cacheJSON, &s.cache)
+		if err != nil {
+			fmt.Println("bang")
+			return err
+		}
+	}
+	return nil
 }
 
 func encodeKey(key []byte) uint64 {
