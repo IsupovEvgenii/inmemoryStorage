@@ -33,8 +33,8 @@ func New(cfg *config.Config) (*Application, error) {
 		return nil, err
 	}
 
-	items := make(map[uint64]storage.Item)
-	expirations := make(map[int64][]uint64)
+	items := make(map[string]storage.Item)
+	expirations := make(map[int64][]string)
 	file, err := os.OpenFile(cfg.DumpFile, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
