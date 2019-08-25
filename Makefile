@@ -1,10 +1,11 @@
 # build application
 build:
-	go build -o ./bin/main cmd/engine/main.go
+	go build -o ./bin/main cmd/storage/main.go
+	go build -o ./bin/mainCli cmd/storage-cli/main.go
 
-# run application
-run:
-	./bin/main 123
-
-deploy:
-	./scripts/deploy.sh
+# run storage
+run-storage:
+	./bin/main
+# run cli
+run-storage-cli:
+	./bin/mainCli
