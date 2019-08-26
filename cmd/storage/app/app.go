@@ -33,8 +33,8 @@ func New(cfg *config.Config) (*Application, error) {
 		return nil, err
 	}
 
-	items := make(map[string]storage.Item)
-	expirations := make(map[int64][]string)
+	items := storage.NewHashMap()
+	expirations := make(map[int64][][]byte)
 	file, err := os.OpenFile(cfg.DumpFile, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -99,6 +99,7 @@ func (a *Application) Run() error {
 					result = []byte("not found")
 				}
 			case "delete":
+				result = []byte("delete")
 				err := a.storage.Delete([]byte(cmd[1]))
 				if err != nil {
 					result = []byte("didn't delete")

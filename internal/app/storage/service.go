@@ -2,7 +2,7 @@ package storage
 
 import (
 	"errors"
-	"fmt"
+	"hash/fnv"
 	"inmemoryStorage/config"
 	"io"
 	"os"
@@ -13,8 +13,8 @@ import (
 type Service struct {
 	cfg *config.Config
 	sync.RWMutex
-	Cache       map[string]Item
-	expirations map[int64][]string
+	cache       *HashMap
+	expirations map[int64][][]byte
 	file        *os.File
 }
 
@@ -23,10 +23,10 @@ type Item struct {
 	Value      []byte
 }
 
-func New(cfg *config.Config, cache map[string]Item, expirations map[int64][]string, file *os.File) *Service {
+func New(cfg *config.Config, cache *HashMap, expirations map[int64][][]byte, file *os.File) *Service {
 	return &Service{
 		cfg:         cfg,
-		Cache:       cache,
+		cache:       cache,
 		expirations: expirations,
 		file:        file,
 	}
@@ -45,25 +45,24 @@ func (s *Service) Set(key, value []byte, duration uint) {
 	}
 
 	s.Lock()
-	if item, found := s.Cache[string(key)]; found {
+	if item, found := s.cache.Get(key); found {
 		for i, curItem := range s.expirations[item.Expiration] {
-			if curItem == string(key) {
+			if Equal(curItem, key) {
 				s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
 			}
 		}
 	}
-	s.Cache[string(key)] = Item{
+	s.cache.Put(key, Item{
 		Value:      value,
 		Expiration: expiration,
-	}
-	s.expirations[expiration] = append(s.expirations[expiration], string(key))
+	})
+	s.expirations[expiration] = append(s.expirations[expiration], key)
 	s.Unlock()
 }
 
 func (s *Service) Get(key []byte) ([]byte, bool) {
 	s.RLock()
-
-	item, found := s.Cache[string(key)]
+	item, found := s.cache.Get(key)
 
 	if !found {
 		s.RUnlock()
@@ -84,40 +83,39 @@ func (s *Service) Get(key []byte) ([]byte, bool) {
 func (s *Service) Delete(key []byte) error {
 	s.Lock()
 
-	if item, found := s.Cache[string(key)]; found {
+	if item, found := s.cache.Get(key); found {
 		for i, curItem := range s.expirations[item.Expiration] {
-			if curItem == string(key) {
+			if Equal(curItem, key) {
 				s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
 			}
 		}
 	}
 
-	if _, found := s.Cache[string(key)]; !found {
+	if _, found := s.cache.Get(key); !found {
 		s.Unlock()
 		return errors.New("key not found")
 	}
 
-	delete(s.Cache, string(key))
+	s.cache.Delete(key)
 	s.Unlock()
 	return nil
 }
 
-func (s *Service) DeleteBatch(keys []string) error {
-
+func (s *Service) DeleteBatch(keys [][]byte) error {
 	for _, key := range keys {
-		if item, found := s.Cache[key]; found {
+		if item, found := s.cache.Get(key); found {
 			for i, curItem := range s.expirations[item.Expiration] {
-				if curItem == key {
+				if Equal(curItem, key) {
 					s.expirations[item.Expiration] = append(s.expirations[item.Expiration][:i], s.expirations[item.Expiration][i+1:]...)
 				}
 			}
 		}
 
-		if _, found := s.Cache[key]; !found {
+		if _, found := s.cache.Get(key); !found {
 			return errors.New("key not found")
 		}
 
-		delete(s.Cache, key)
+		s.cache.Delete(key)
 	}
 	return nil
 }
@@ -125,9 +123,6 @@ func (s *Service) DeleteBatch(keys []string) error {
 func (s *Service) DeleteExpired() {
 	now := time.Now().UnixNano()
 	s.Lock()
-	for k, v := range s.Cache {
-		fmt.Println(k, v.Value)
-	}
 	for expiration, keys := range s.expirations {
 		if expiration > 0 && now > expiration {
 			if err := s.DeleteBatch(keys); err != nil {
@@ -135,15 +130,12 @@ func (s *Service) DeleteExpired() {
 			}
 		}
 	}
-	for k, v := range s.Cache {
-		fmt.Println(k, v.Value)
-	}
 	s.Unlock()
 
 }
 func (s *Service) Dump() error {
 	s.Lock()
-	cacheJSON, err := s.MarshalJSON()
+	cacheJSON, err := s.cache.MarshalJSON()
 	if err != nil {
 		s.Unlock()
 		return err
@@ -184,7 +176,7 @@ func (s *Service) Load() error {
 	}
 
 	if string(cacheJSON) != "" {
-		err := s.UnmarshalJSON(cacheJSON)
+		err := s.cache.UnmarshalJSON(cacheJSON)
 		if err != nil {
 			s.Unlock()
 			return err
@@ -192,4 +184,13 @@ func (s *Service) Load() error {
 	}
 	s.Unlock()
 	return nil
+}
+
+func (s *Service) hash(key []byte) (uint64, error) {
+	h := fnv.New64()
+	_, err := h.Write(key)
+	if err != nil {
+		return 0, err
+	}
+	return h.Sum64(), nil
 }

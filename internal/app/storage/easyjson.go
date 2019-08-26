@@ -3,10 +3,10 @@
 package storage
 
 import (
-	json "encoding/json"
-	easyjson "github.com/mailru/easyjson"
-	jlexer "github.com/mailru/easyjson/jlexer"
-	jwriter "github.com/mailru/easyjson/jwriter"
+	"encoding/json"
+	"github.com/mailru/easyjson"
+	"github.com/mailru/easyjson/jlexer"
+	"github.com/mailru/easyjson/jwriter"
 )
 
 // suppress unused package warning
@@ -17,7 +17,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(in *jlexer.Lexer, out *Service) {
+func easyjson305a78f8DecodeInmemoryStorageInternalAppStorage(in *jlexer.Lexer, out *MapEntry) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -36,26 +36,25 @@ func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(in *jlexer.Lexer, o
 			continue
 		}
 		switch key {
-		case "Cache":
+		case "Key":
 			if in.IsNull() {
 				in.Skip()
+				out.Key = nil
 			} else {
-				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Cache = make(map[string]Item)
-				} else {
-					out.Cache = nil
-				}
-				for !in.IsDelim('}') {
-					key := string(in.String())
-					in.WantColon()
-					var v1 Item
-					(v1).UnmarshalEasyJSON(in)
-					(out.Cache)[key] = v1
-					in.WantComma()
-				}
-				in.Delim('}')
+				out.Key = in.Bytes()
 			}
+		case "Next":
+			if in.IsNull() {
+				in.Skip()
+				out.Next = nil
+			} else {
+				if out.Next == nil {
+					out.Next = new(MapEntry)
+				}
+				(*out.Next).UnmarshalEasyJSON(in)
+			}
+		case "Value":
+			easyjson305a78f8DecodeInmemoryStorageInternalAppStorage1(in, &out.Value)
 		default:
 			in.SkipRecursive()
 		}
@@ -66,58 +65,56 @@ func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(in *jlexer.Lexer, o
 		in.Consumed()
 	}
 }
-func easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage(out *jwriter.Writer, in Service) {
+func easyjson305a78f8EncodeInmemoryStorageInternalAppStorage(out *jwriter.Writer, in MapEntry) {
 	out.RawByte('{')
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Cache\":"
+		const prefix string = ",\"Key\":"
 		out.RawString(prefix[1:])
-		if in.Cache == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
-			out.RawString(`null`)
+		out.Base64Bytes(in.Key)
+	}
+	{
+		const prefix string = ",\"Next\":"
+		out.RawString(prefix)
+		if in.Next == nil {
+			out.RawString("null")
 		} else {
-			out.RawByte('{')
-			v2First := true
-			for v2Name, v2Value := range in.Cache {
-				if v2First {
-					v2First = false
-				} else {
-					out.RawByte(',')
-				}
-				out.String(string(v2Name))
-				out.RawByte(':')
-				(v2Value).MarshalEasyJSON(out)
-			}
-			out.RawByte('}')
+			(*in.Next).MarshalEasyJSON(out)
 		}
+	}
+	{
+		const prefix string = ",\"Value\":"
+		out.RawString(prefix)
+		easyjson305a78f8EncodeInmemoryStorageInternalAppStorage1(out, in.Value)
 	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v Service) MarshalJSON() ([]byte, error) {
+func (v MapEntry) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage(&w, v)
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Service) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage(w, v)
+func (v MapEntry) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *Service) UnmarshalJSON(data []byte) error {
+func (v *MapEntry) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(&r, v)
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Service) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage(l, v)
+func (v *MapEntry) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage(l, v)
 }
-func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage1(in *jlexer.Lexer, out *Item) {
+func easyjson305a78f8DecodeInmemoryStorageInternalAppStorage1(in *jlexer.Lexer, out *Item) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -155,7 +152,7 @@ func easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage1(in *jlexer.Lexer, 
 		in.Consumed()
 	}
 }
-func easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage1(out *jwriter.Writer, in Item) {
+func easyjson305a78f8EncodeInmemoryStorageInternalAppStorage1(out *jwriter.Writer, in Item) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -171,27 +168,207 @@ func easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage1(out *jwriter.Write
 	}
 	out.RawByte('}')
 }
+func easyjson305a78f8DecodeInmemoryStorageInternalAppStorage2(in *jlexer.Lexer, out *List) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeString()
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Head":
+			if in.IsNull() {
+				in.Skip()
+				out.Head = nil
+			} else {
+				if out.Head == nil {
+					out.Head = new(MapEntry)
+				}
+				(*out.Head).UnmarshalEasyJSON(in)
+			}
+		case "Size":
+			out.Size = int(in.Int())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson305a78f8EncodeInmemoryStorageInternalAppStorage2(out *jwriter.Writer, in List) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Head\":"
+		out.RawString(prefix[1:])
+		if in.Head == nil {
+			out.RawString("null")
+		} else {
+			(*in.Head).MarshalEasyJSON(out)
+		}
+	}
+	{
+		const prefix string = ",\"Size\":"
+		out.RawString(prefix)
+		out.Int(int(in.Size))
+	}
+	out.RawByte('}')
+}
 
 // MarshalJSON supports json.Marshaler interface
-func (v Item) MarshalJSON() ([]byte, error) {
+func (v List) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage1(&w, v)
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Item) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonCd93bc43EncodeInmemoryStorageInternalAppStorage1(w, v)
+func (v List) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *Item) UnmarshalJSON(data []byte) error {
+func (v *List) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage1(&r, v)
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Item) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonCd93bc43DecodeInmemoryStorageInternalAppStorage1(l, v)
+func (v *List) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage2(l, v)
+}
+func easyjson305a78f8DecodeInmemoryStorageInternalAppStorage3(in *jlexer.Lexer, out *HashMap) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeString()
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "M":
+			if in.IsNull() {
+				in.Skip()
+			} else {
+				in.Delim('{')
+				if !in.IsDelim('}') {
+					out.M = make(map[int]*List)
+				} else {
+					out.M = nil
+				}
+				for !in.IsDelim('}') {
+					key := int(in.IntStr())
+					in.WantColon()
+					var v7 *List
+					if in.IsNull() {
+						in.Skip()
+						v7 = nil
+					} else {
+						if v7 == nil {
+							v7 = new(List)
+						}
+						(*v7).UnmarshalEasyJSON(in)
+					}
+					(out.M)[key] = v7
+					in.WantComma()
+				}
+				in.Delim('}')
+			}
+		case "BucketSize":
+			out.BucketSize = int(in.Int())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson305a78f8EncodeInmemoryStorageInternalAppStorage3(out *jwriter.Writer, in HashMap) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"M\":"
+		out.RawString(prefix[1:])
+		if in.M == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
+			out.RawString(`null`)
+		} else {
+			out.RawByte('{')
+			v8First := true
+			for v8Name, v8Value := range in.M {
+				if v8First {
+					v8First = false
+				} else {
+					out.RawByte(',')
+				}
+				out.IntStr(int(v8Name))
+				out.RawByte(':')
+				if v8Value == nil {
+					out.RawString("null")
+				} else {
+					(*v8Value).MarshalEasyJSON(out)
+				}
+			}
+			out.RawByte('}')
+		}
+	}
+	{
+		const prefix string = ",\"BucketSize\":"
+		out.RawString(prefix)
+		out.Int(int(in.BucketSize))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v HashMap) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage3(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v HashMap) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson305a78f8EncodeInmemoryStorageInternalAppStorage3(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *HashMap) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage3(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *HashMap) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson305a78f8DecodeInmemoryStorageInternalAppStorage3(l, v)
 }
